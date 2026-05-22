@@ -8,6 +8,7 @@ import { Server } from 'socket.io'
 import { randomUUID } from 'crypto'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { existsSync } from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 import {
@@ -285,10 +286,21 @@ io.on('connection', socket => {
   })
 })
 
-// Serve built client in production
+// Health check (Railway uses this to confirm the service is up)
+app.get('/health', (_req, res) => res.json({ ok: true }))
+
+// Serve built client
 const clientDist = join(__dirname, '../client/dist')
-app.use(express.static(clientDist))
-app.get('*', (_req, res) => res.sendFile(join(clientDist, 'index.html')))
+const indexHtml = join(clientDist, 'index.html')
+if (existsSync(clientDist)) {
+  app.use(express.static(clientDist))
+  app.get('*', (_req, res, next) => {
+    if (existsSync(indexHtml)) res.sendFile(indexHtml)
+    else next()
+  })
+} else {
+  console.warn('[server] client/dist not found — static serving disabled')
+}
 
 const PORT = process.env.PORT ?? 3001
 httpServer.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))
