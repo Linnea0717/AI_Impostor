@@ -12,6 +12,9 @@ vi.mock('@ai-sdk/openai', () => ({
   openai: vi.fn(() => 'mock-openai-model'),
   createOpenAI: vi.fn(() => vi.fn(() => 'mock-ollama-model')),
 }))
+vi.mock('@ai-sdk/google', () => ({
+  createGoogleGenerativeAI: vi.fn(() => vi.fn(() => 'mock-google-model')),
+}))
 
 import { generateText } from 'ai'
 import { generateDefinition, guessDefinition } from '../provider'

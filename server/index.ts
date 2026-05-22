@@ -1,9 +1,15 @@
 // server/index.ts
-import 'dotenv/config'
+import { config as loadEnv } from 'dotenv'
+// Load .env from the project root regardless of which directory the server is started from
+loadEnv({ path: new URL('../.env', import.meta.url).pathname })
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { randomUUID } from 'crypto'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 import {
   createRoom, addPlayer, removePlayer, setPlayerConfirmed,
   submitAnswer, voteForAnswer, prepareVoting, applyScoreDeltas,
@@ -61,7 +67,7 @@ function cleanupRoom(code: string) {
 }
 
 // ── State transitions ────────────────────────────────────────────────
-async function advanceToWordGeneration(code: string) {
+function advanceToWordGeneration(code: string) {
   let room = rooms.get(code)
   // Guard: only advance from LOBBY or ROUND_RESULT — prevents double-execution on race between timer + checkAndAdvance
   if (!room || !['LOBBY', 'ROUND_RESULT'].includes(room.state)) return
@@ -76,22 +82,27 @@ async function advanceToWordGeneration(code: string) {
   const entry = pickWord(pool, used)
   used.add(entry.word)
 
-  let definition: string
-  try {
-    definition = await withTimeout(generateDefinition(entry.word), 5_000)
-  } catch {
-    definition = entry.fallback
-  }
-  pendingAiDefinitions.set(code, definition)
-
-  room = rooms.get(code)
-  if (!room || room.state !== 'WORD_GENERATION') return  // guard against race
-
-  room = { ...room, state: 'ANSWER_INPUT', currentWord: entry.word, timerEndsAt: Date.now() + 60_000 }
+  // Transition to ANSWER_INPUT immediately; LLM generates in parallel
+  room = { ...room, state: 'ANSWER_INPUT', currentWord: entry.word, timerEndsAt: Date.now() + 60_000, aiSubmitted: false }
   rooms.set(code, room)
   broadcast(room)
 
   setTimer(code, 60_000, () => advanceToVoting(code))
+
+  // AI generates in background — mark aiSubmitted when ready (or on fallback)
+  withTimeout(generateDefinition(entry.word), 58_000)
+    .then(definition => { pendingAiDefinitions.set(code, definition) })
+    .catch(err => {
+      console.error('[AI imposter] failed, using fallback:', err instanceof Error ? err.message : err)
+      pendingAiDefinitions.set(code, entry.fallback)
+    })
+    .finally(() => {
+      const r = rooms.get(code)
+      if (!r || r.state !== 'ANSWER_INPUT') return
+      rooms.set(code, { ...r, aiSubmitted: true })
+      broadcast(rooms.get(code)!)
+      checkAndAdvance(code)
+    })
 }
 
 async function advanceToVoting(code: string) {
@@ -110,16 +121,17 @@ async function advanceToVoting(code: string) {
 
   // AI guesser runs in parallel — result stored when ready, revealed in ROUND_RESULT
   const answersForGuesser = room.answers.map(a => ({ id: a.id, text: a.text }))
-  withTimeout(guessDefinition(answersForGuesser), 45_000)
-    .then(answerId => {
+  let aiGuesserVoteResult: string = 'TIMEOUT'
+  withTimeout(guessDefinition(answersForGuesser), 43_000)
+    .then(answerId => { aiGuesserVoteResult = answerId })
+    .catch(err => console.error('[AI guesser] failed:', err instanceof Error ? err.message : err))
+    .finally(() => {
       const r = rooms.get(code)
-      if (!r || r.state !== 'VOTING') return
-      rooms.set(code, { ...r, aiGuesserVote: answerId })
-    })
-    .catch(() => {
-      const r = rooms.get(code)
-      if (!r || r.state !== 'VOTING') return
-      rooms.set(code, { ...r, aiGuesserVote: 'TIMEOUT' })
+      if (!r || (r.state !== 'VOTING' && r.state !== 'ROUND_RESULT')) return
+      rooms.set(code, { ...r, aiGuesserVote: aiGuesserVoteResult, aiGuesserVoted: true })
+      broadcast(rooms.get(code)!)
+      // Only trigger early-stop if still voting; in ROUND_RESULT the score is already calculated
+      if (r.state === 'VOTING') checkAndAdvance(code)
     })
 
   setTimer(code, 45_000, () => advanceToRoundResult(code))
@@ -165,9 +177,9 @@ function checkAndAdvance(code: string) {
     clearTimer(code)
     if (room.state === 'LOBBY') advanceToWordGeneration(code)
     else advanceFromRoundResult(code)
-  } else if (room.state === 'ANSWER_INPUT' && allSubmitted(room)) {
+  } else if (room.state === 'ANSWER_INPUT' && allSubmitted(room) && room.aiSubmitted) {
     advanceToVoting(code)
-  } else if (room.state === 'VOTING' && allVoted(room)) {
+  } else if (room.state === 'VOTING' && allVoted(room) && room.aiGuesserVoted) {
     advanceToRoundResult(code)
   }
 }
@@ -272,6 +284,11 @@ io.on('connection', socket => {
     checkAndAdvance(code)
   })
 })
+
+// Serve built client in production
+const clientDist = join(__dirname, '../client/dist')
+app.use(express.static(clientDist))
+app.get('*', (_req, res) => res.sendFile(join(clientDist, 'index.html')))
 
 const PORT = process.env.PORT ?? 3001
 httpServer.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))

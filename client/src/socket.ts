@@ -3,9 +3,14 @@ import type { PublicRoom } from '~shared/types'
 
 let socket: Socket
 let myPlayerId: string | null = sessionStorage.getItem('playerId')
+let mySubmittedText: string | null = null
 
 export function getMyPlayerId(): string | null {
   return myPlayerId
+}
+
+export function getMySubmittedText(): string | null {
+  return mySubmittedText
 }
 
 export function connect(onUpdate: (room: PublicRoom) => void, onError: (msg: string) => void): void {
@@ -28,6 +33,7 @@ export function confirmReady(): void {
 }
 
 export function submitAnswer(text: string): void {
+  mySubmittedText = text
   socket.emit('game:submit-answer', { text })
 }
 

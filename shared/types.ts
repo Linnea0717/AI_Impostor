@@ -33,6 +33,8 @@ export interface Room {
   currentWord: string
   answers: Answer[]
   aiGuesserVote: string | null  // answerId or 'TIMEOUT'; null during VOTING
+  aiGuesserVoted: boolean       // true when AI guesser has cast its vote (hidden from clients during VOTING)
+  aiSubmitted: boolean          // true when AI definition is ready during ANSWER_INPUT
   scores: Record<string, number>
   timerEndsAt: number  // unix ms; clients calculate countdown locally
 }

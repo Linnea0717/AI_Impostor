@@ -198,7 +198,8 @@ describe('allVoted', () => {
     expect(allVoted(r4)).toBe(false)
     const r5 = voteForAnswer(r4, p1.id, r4.answers[0].id)
     expect(allVoted(r5)).toBe(false)
-    const r6 = voteForAnswer(r5, p2.id, r5.answers[0].id)
+    const notP2sAnswer = r5.answers.find(a => a.authorId !== p2.id)!
+    const r6 = voteForAnswer(r5, p2.id, notP2sAnswer.id)
     expect(allVoted(r6)).toBe(true)
   })
 })
@@ -210,6 +211,22 @@ describe('allConfirmed / allSubmitted empty-room guard', () => {
 
   it('allSubmitted returns false for empty room', () => {
     expect(allSubmitted(createRoom('rare'))).toBe(false)
+  })
+})
+
+describe('voteForAnswer self-vote guard', () => {
+  it('ignores a vote for the player\'s own answer', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
+    const r3 = submitAnswer(r2, p1.id, 'Alice answer')
+    const r4 = submitAnswer(r3, p2.id, 'Bob answer')
+    const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
+    const r5 = prepareVoting(r4, aiAnswer)
+    const aliceAnswer = r5.answers.find(a => a.authorId === p1.id)!
+    const r6 = voteForAnswer(r5, p1.id, aliceAnswer.id)
+    expect(r6.players.find(p => p.id === p1.id)!.hasVoted).toBe(false)
+    expect(aliceAnswer.votes).toHaveLength(0)
   })
 })
 

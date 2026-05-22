@@ -17,7 +17,7 @@ export function render(room: PublicRoom, myId: string | null): void {
       ? '<span class="badge badge-ai">🤖 AI</span>'
       : `<strong>${escapeHtml(playerMap[a.authorId!] ?? '?')}</strong>`
     const guesserLabel = isAIGuess
-      ? '<span class="badge badge-guesser">🤖 猜題 AI 也選了這個</span>'
+      ? '<span class="badge badge-guesser">🤖 猜題 AI 選了這個</span>'
       : ''
     const votesLabel = a.votes.length > 0
       ? `<div style="font-size:0.8rem;color:#666;margin-top:4px">投票者：${a.votes.map(id => escapeHtml(playerMap[id] ?? '?')).join('、')}</div>`

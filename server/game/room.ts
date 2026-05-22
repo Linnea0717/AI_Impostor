@@ -22,6 +22,8 @@ export function createRoom(questionPool: string): Room {
     currentWord: '',
     answers: [],
     aiGuesserVote: null,
+    aiGuesserVoted: false,
+    aiSubmitted: false,
     scores: {},
     timerEndsAt: 0,
   }
@@ -96,6 +98,7 @@ export function submitAnswer(room: Room, playerId: string, text: string): Room {
 
 export function voteForAnswer(room: Room, playerId: string, answerId: string): Room {
   if (room.players.find(p => p.id === playerId)?.hasVoted) return room
+  if (room.answers.find(a => a.id === answerId)?.authorId === playerId) return room
   return {
     ...room,
     answers: room.answers.map(a =>
@@ -130,6 +133,8 @@ export function resetPerRound(room: Room): Room {
     ...room,
     answers: [],
     aiGuesserVote: null,
+    aiGuesserVoted: false,
+    aiSubmitted: false,
     players: room.players.map(p => ({
       ...p,
       hasConfirmed: false,

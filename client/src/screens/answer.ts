@@ -1,14 +1,14 @@
 import { submitAnswer } from '../socket'
 import type { PublicRoom } from '~shared/types'
 import { escapeHtml } from '../utils'
-
-let timerInterval: ReturnType<typeof setInterval> | null = null
+import { startCountdown } from '../timer'
 
 export function render(room: PublicRoom, myId: string | null): void {
   const app = document.getElementById('app')!
   const myPlayer = room.players.find(p => p.id === myId)
   const alreadySubmitted = myPlayer?.hasSubmitted ?? false
-  const submittedCount = room.players.filter(p => p.hasSubmitted).length
+  const submittedCount = room.players.filter(p => p.hasSubmitted).length + (room.aiSubmitted ? 1 : 0)
+  const totalCount = room.players.length + 1  // +1 for AI
 
   if (room.state === 'WORD_GENERATION') {
     app.innerHTML = `
@@ -20,9 +20,6 @@ export function render(room: PublicRoom, myId: string | null): void {
     return
   }
 
-  // Clear previous timer
-  if (timerInterval) clearInterval(timerInterval)
-
   app.innerHTML = `
     <div class="card">
       <p style="font-size:0.85rem;color:#666">第 ${room.round}/${room.maxRounds} 回合</p>
@@ -31,22 +28,14 @@ export function render(room: PublicRoom, myId: string | null): void {
     </div>
     <div class="card">
       ${alreadySubmitted
-        ? `<p style="text-align:center;color:#16a34a">✅ 已送出！等待其他玩家…<br><small>${submittedCount}/${room.players.length} 人完成</small></p>`
-        : `<textarea id="answer-input" placeholder="幫這個詞彙瞎掰一個假定義…" rows="4" maxlength="200"></textarea>
+        ? `<p style="text-align:center;color:#16a34a">✅ 已送出！等待其他玩家…<br><small>${submittedCount}/${totalCount} 人完成</small></p>`
+        : `<textarea id="answer-input" placeholder="請根據題目瞎掰出一段描述" rows="4" maxlength="200"></textarea>
            <button id="submit-btn">送出答案</button>`
       }
     </div>
   `
 
-  // Countdown timer
-  function tick() {
-    const el = document.getElementById('countdown')
-    if (!el) { if (timerInterval) { clearInterval(timerInterval); timerInterval = null } return }
-    const secsLeft = Math.max(0, Math.ceil((room.timerEndsAt - Date.now()) / 1000))
-    el.textContent = `${Math.floor(secsLeft / 60)}:${String(secsLeft % 60).padStart(2, '0')}`
-  }
-  tick()
-  timerInterval = setInterval(tick, 500)
+  startCountdown(room.timerEndsAt)
 
   if (!alreadySubmitted) {
     document.getElementById('submit-btn')!.addEventListener('click', () => {
