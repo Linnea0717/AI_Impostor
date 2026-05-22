@@ -4,8 +4,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "baseUrl": ".",
     "paths": {
-      "~shared/*": ["../../shared/*"]
+      "~shared/*": ["../shared/*"]
     }
   },
   "include": ["src/**/*.ts"]
