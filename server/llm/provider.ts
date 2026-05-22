@@ -2,6 +2,7 @@
 import { generateText } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { openai, createOpenAI } from '@ai-sdk/openai'
+import { google } from '@ai-sdk/google'
 import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -22,6 +23,7 @@ function getModel() {
   const provider = process.env.LLM_PROVIDER ?? 'anthropic'
   const model = process.env.LLM_MODEL ?? 'claude-haiku-4-5-20251001'
   if (provider === 'openai') return openai(model)
+  if (provider === 'google') return google(model)
   if (provider === 'ollama') {
     const ollamaClient = createOpenAI({
       baseURL: (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434') + '/v1',
