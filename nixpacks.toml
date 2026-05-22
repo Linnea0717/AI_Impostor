@@ -1,5 +1,8 @@
+[phases.install]
+cmds = ["npm install"]
+
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["npm run build --workspace=fake-encyclopedia-client"]
 
 [start]
-cmd = "npm run start"
+cmd = "npm run start --workspace=fake-encyclopedia-server"
