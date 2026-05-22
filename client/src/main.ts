@@ -45,18 +45,23 @@ function renderHome(): void {
         select.appendChild(opt)
       })
     })
+    .catch(() => showError('無法載入題庫列表'))
 
   document.getElementById('create-btn')!.addEventListener('click', async () => {
     const pool = (document.getElementById('pool-select') as HTMLSelectElement).value
     const nickname = (document.getElementById('host-nickname') as HTMLInputElement).value.trim()
     if (!nickname) { showError('請輸入暱稱'); return }
-    const res = await fetch('/api/rooms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionPool: pool }),
-    })
-    const { code } = await res.json()
-    startGame(code, nickname)
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionPool: pool }),
+      })
+      const { code } = await res.json()
+      startGame(code, nickname)
+    } catch {
+      showError('建立房間失敗，請重試')
+    }
   })
 
   document.getElementById('join-btn')!.addEventListener('click', () => {

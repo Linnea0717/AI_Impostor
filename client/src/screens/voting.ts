@@ -1,5 +1,6 @@
 import { voteForAnswer } from '../socket'
 import type { PublicRoom } from '~shared/types'
+import { escapeHtml } from '../utils'
 
 export function render(room: PublicRoom, myId: string | null): void {
   const app = document.getElementById('app')!
@@ -20,7 +21,7 @@ export function render(room: PublicRoom, myId: string | null): void {
     ${room.answers.map((a, i) => `
       <div class="card answer-card" data-id="${a.id}" style="cursor:${alreadyVoted ? 'default' : 'pointer'}">
         <span style="color:#6c3aed;font-weight:bold">${String.fromCharCode(65 + i)}.</span>
-        ${a.text}
+        ${escapeHtml(a.text)}
       </div>`).join('')}
   `
 

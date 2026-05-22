@@ -1,5 +1,6 @@
 import { submitAnswer } from '../socket'
 import type { PublicRoom } from '~shared/types'
+import { escapeHtml } from '../utils'
 
 let timerInterval: ReturnType<typeof setInterval> | null = null
 
@@ -26,7 +27,7 @@ export function render(room: PublicRoom, myId: string | null): void {
     <div class="card">
       <p style="font-size:0.85rem;color:#666">第 ${room.round}/${room.maxRounds} 回合</p>
       <div class="timer" id="countdown">--</div>
-      <h2 style="text-align:center;font-size:1.4rem">${room.currentWord}</h2>
+      <h2 style="text-align:center;font-size:1.4rem">${escapeHtml(room.currentWord)}</h2>
     </div>
     <div class="card">
       ${alreadySubmitted
@@ -39,9 +40,10 @@ export function render(room: PublicRoom, myId: string | null): void {
 
   // Countdown timer
   function tick() {
-    const secsLeft = Math.max(0, Math.ceil((room.timerEndsAt - Date.now()) / 1000))
     const el = document.getElementById('countdown')
-    if (el) el.textContent = `${Math.floor(secsLeft / 60)}:${String(secsLeft % 60).padStart(2, '0')}`
+    if (!el) { if (timerInterval) { clearInterval(timerInterval); timerInterval = null } return }
+    const secsLeft = Math.max(0, Math.ceil((room.timerEndsAt - Date.now()) / 1000))
+    el.textContent = `${Math.floor(secsLeft / 60)}:${String(secsLeft % 60).padStart(2, '0')}`
   }
   tick()
   timerInterval = setInterval(tick, 500)

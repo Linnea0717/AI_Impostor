@@ -1,5 +1,6 @@
 import { confirmReady } from '../socket'
 import type { PublicRoom } from '~shared/types'
+import { escapeHtml } from '../utils'
 
 export function render(room: PublicRoom, myId: string | null): void {
   const app = document.getElementById('app')!
@@ -14,12 +15,12 @@ export function render(room: PublicRoom, myId: string | null): void {
     const isAIGuess = room.aiGuesserVote === a.id
     const authorLabel = isAI
       ? '<span class="badge badge-ai">🤖 AI</span>'
-      : `<strong>${playerMap[a.authorId!] ?? '?'}</strong>`
+      : `<strong>${escapeHtml(playerMap[a.authorId!] ?? '?')}</strong>`
     const guesserLabel = isAIGuess
       ? '<span class="badge badge-guesser">🤖 猜題 AI 也選了這個</span>'
       : ''
     const votesLabel = a.votes.length > 0
-      ? `<div style="font-size:0.8rem;color:#666;margin-top:4px">投票者：${a.votes.map(id => playerMap[id] ?? '?').join('、')}</div>`
+      ? `<div style="font-size:0.8rem;color:#666;margin-top:4px">投票者：${a.votes.map(id => escapeHtml(playerMap[id] ?? '?')).join('、')}</div>`
       : '<div style="font-size:0.8rem;color:#bbb;margin-top:4px">無人投票</div>'
     return `
       <div class="card" style="${isAI ? 'border:2px solid #f59e0b' : ''}">
@@ -27,7 +28,7 @@ export function render(room: PublicRoom, myId: string | null): void {
           <span style="color:#6c3aed;font-weight:bold">${String.fromCharCode(65 + i)}.</span>
           <div>${authorLabel} ${guesserLabel}</div>
         </div>
-        <p style="margin-top:8px">${a.text}</p>
+        <p style="margin-top:8px">${escapeHtml(a.text)}</p>
         ${votesLabel}
       </div>`
   }).join('')
@@ -35,7 +36,7 @@ export function render(room: PublicRoom, myId: string | null): void {
   const sortedPlayers = [...room.players].sort((a, b) => (room.scores[b.id] ?? 0) - (room.scores[a.id] ?? 0))
   const scoreboardHtml = sortedPlayers.map((p, i) => `
     <li style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0">
-      <span>${i === 0 ? '🏆 ' : ''}${p.nickname}${p.id === myId ? ' (你)' : ''}</span>
+      <span>${i === 0 ? '🏆 ' : ''}${escapeHtml(p.nickname)}${p.id === myId ? ' (你)' : ''}</span>
       <span style="font-weight:bold">${room.scores[p.id] ?? 0} 分</span>
     </li>`).join('')
 
