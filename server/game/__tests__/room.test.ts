@@ -1,0 +1,157 @@
+import { describe, it, expect } from 'vitest'
+import {
+  createRoom, addPlayer, removePlayer, reconnectPlayer,
+  setPlayerConfirmed, submitAnswer, voteForAnswer, prepareVoting,
+  applyScoreDeltas, resetPerRound,
+  allConfirmed, allSubmitted, allVoted, toPublicRoom,
+} from '../room'
+import type { Answer } from '~shared/types'
+
+describe('createRoom', () => {
+  it('creates a room in LOBBY state with correct defaults', () => {
+    const room = createRoom('rare')
+    expect(room.state).toBe('LOBBY')
+    expect(room.questionPool).toBe('rare')
+    expect(room.round).toBe(0)
+    expect(room.maxRounds).toBe(5)
+    expect(room.players).toHaveLength(0)
+    expect(room.code).toMatch(/^[A-Z0-9]{5}$/)
+  })
+})
+
+describe('addPlayer', () => {
+  it('adds a player and makes them host if first', () => {
+    let room = createRoom('rare')
+    const { room: r, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
+    expect(r.players).toHaveLength(1)
+    expect(r.hostId).toBe(player.id)
+    expect(player.nickname).toBe('Alice')
+  })
+
+  it('does not change host when second player joins', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 'socket-1')
+    const { room: r2 } = addPlayer(r1, 'Bob', undefined, 'socket-2')
+    expect(r2.hostId).toBe(p1.id)
+  })
+
+  it('reuses existing player id when token matches (reconnect path)', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Alice', player.id, 'socket-2')
+    expect(r2.players).toHaveLength(1)
+    expect(p2.id).toBe(player.id)
+    expect(p2.socketId).toBe('socket-2')
+  })
+})
+
+describe('removePlayer', () => {
+  it('removes a player from the list', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
+    const r2 = removePlayer(r1, player.id)
+    expect(r2.players).toHaveLength(0)
+  })
+
+  it('promotes next player to host when host is removed', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 'socket-1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 'socket-2')
+    const r3 = removePlayer(r2, p1.id)
+    expect(r3.hostId).toBe(p2.id)
+  })
+})
+
+describe('setPlayerConfirmed / allConfirmed', () => {
+  it('marks a player as confirmed', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = setPlayerConfirmed(r1, player.id)
+    expect(r2.players[0].hasConfirmed).toBe(true)
+  })
+
+  it('allConfirmed returns true only when all players are confirmed', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
+    expect(allConfirmed(r2)).toBe(false)
+    const r3 = setPlayerConfirmed(r2, p1.id)
+    expect(allConfirmed(r3)).toBe(false)
+    const r4 = setPlayerConfirmed(r3, p2.id)
+    expect(allConfirmed(r4)).toBe(true)
+  })
+})
+
+describe('submitAnswer / allSubmitted', () => {
+  it('records a player answer', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = submitAnswer(r1, player.id, 'My fake answer')
+    expect(r2.answers).toHaveLength(1)
+    expect(r2.answers[0].text).toBe('My fake answer')
+    expect(r2.answers[0].authorId).toBe(player.id)
+    expect(r2.players[0].hasSubmitted).toBe(true)
+  })
+
+  it('ignores duplicate submissions from the same player', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = submitAnswer(r1, player.id, 'First')
+    const r3 = submitAnswer(r2, player.id, 'Second')
+    expect(r3.answers).toHaveLength(1)
+    expect(r3.answers[0].text).toBe('First')
+  })
+})
+
+describe('voteForAnswer / allVoted', () => {
+  it('records a vote', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
+    const r3 = submitAnswer(r2, p2.id, 'Bob answer')
+    const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
+    const r4 = prepareVoting(r3, aiAnswer)
+    const r5 = voteForAnswer(r4, p1.id, r4.answers[0].id)
+    expect(r5.answers.some(a => a.votes.includes(p1.id))).toBe(true)
+    expect(r5.players.find(p => p.id === p1.id)!.hasVoted).toBe(true)
+  })
+})
+
+describe('toPublicRoom', () => {
+  it('strips authorId from answers during VOTING', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = submitAnswer(r1, player.id, 'My answer')
+    const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
+    const r3 = prepareVoting(r2, aiAnswer)
+    const pub = toPublicRoom(r3)
+    expect(pub.state).toBe('VOTING')
+    pub.answers.forEach(a => expect(a.authorId).toBeUndefined())
+    expect(pub.aiGuesserVote).toBeNull()
+  })
+
+  it('includes authorId in ROUND_RESULT', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = submitAnswer(r1, player.id, 'My answer')
+    const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
+    const r3 = { ...prepareVoting(r2, aiAnswer), state: 'ROUND_RESULT' as const }
+    const pub = toPublicRoom(r3)
+    pub.answers.forEach(a => expect(a.authorId).toBeDefined())
+  })
+})
+
+describe('resetPerRound', () => {
+  it('clears per-round fields but keeps scores', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = { ...r1, scores: { [player.id]: 10 } }
+    const r3 = resetPerRound(r2)
+    expect(r3.answers).toHaveLength(0)
+    expect(r3.aiGuesserVote).toBeNull()
+    expect(r3.players[0].hasConfirmed).toBe(false)
+    expect(r3.players[0].hasSubmitted).toBe(false)
+    expect(r3.players[0].hasVoted).toBe(false)
+    expect(r3.scores[player.id]).toBe(10)  // scores preserved
+  })
+})
