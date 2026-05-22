@@ -2,7 +2,7 @@ import { io, type Socket } from 'socket.io-client'
 import type { PublicRoom } from '~shared/types'
 
 let socket: Socket
-let myPlayerId: string | null = localStorage.getItem('playerId')
+let myPlayerId: string | null = sessionStorage.getItem('playerId')
 
 export function getMyPlayerId(): string | null {
   return myPlayerId
@@ -14,12 +14,12 @@ export function connect(onUpdate: (room: PublicRoom) => void, onError: (msg: str
   socket.on('room:error', ({ message }: { message: string }) => onError(message))
   socket.on('player:token', ({ token }: { token: string }) => {
     myPlayerId = token
-    localStorage.setItem('playerId', token)
+    sessionStorage.setItem('playerId', token)
   })
 }
 
 export function joinRoom(code: string, nickname: string): void {
-  const token = localStorage.getItem('playerId') ?? undefined
+  const token = sessionStorage.getItem('playerId') ?? undefined
   socket.emit('player:join', { code, nickname, token })
 }
 
