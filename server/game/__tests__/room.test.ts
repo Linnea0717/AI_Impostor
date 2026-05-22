@@ -155,3 +155,76 @@ describe('resetPerRound', () => {
     expect(r3.scores[player.id]).toBe(10)  // scores preserved
   })
 })
+
+describe('reconnectPlayer', () => {
+  it('updates socketId for the matching player', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
+    const r2 = reconnectPlayer(r1, player.id, 'socket-new')
+    expect(r2.players[0].socketId).toBe('socket-new')
+  })
+})
+
+describe('applyScoreDeltas', () => {
+  it('adds deltas to existing scores', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = applyScoreDeltas(r1, { [player.id]: 3 })
+    expect(r2.scores[player.id]).toBe(3)
+  })
+
+  it('accumulates on top of existing score', () => {
+    let room = createRoom('rare')
+    const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
+    const r2 = applyScoreDeltas(r1, { [player.id]: 3 })
+    const r3 = applyScoreDeltas(r2, { [player.id]: 2 })
+    expect(r3.scores[player.id]).toBe(5)
+  })
+})
+
+describe('allVoted', () => {
+  it('returns false when no players', () => {
+    const room = createRoom('rare')
+    expect(allVoted(room)).toBe(false)
+  })
+
+  it('returns true when all players have voted', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
+    const r3 = submitAnswer(r2, p2.id, 'Bob answer')
+    const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
+    const r4 = prepareVoting(r3, aiAnswer)
+    expect(allVoted(r4)).toBe(false)
+    const r5 = voteForAnswer(r4, p1.id, r4.answers[0].id)
+    expect(allVoted(r5)).toBe(false)
+    const r6 = voteForAnswer(r5, p2.id, r5.answers[0].id)
+    expect(allVoted(r6)).toBe(true)
+  })
+})
+
+describe('allConfirmed / allSubmitted empty-room guard', () => {
+  it('allConfirmed returns false for empty room', () => {
+    expect(allConfirmed(createRoom('rare'))).toBe(false)
+  })
+
+  it('allSubmitted returns false for empty room', () => {
+    expect(allSubmitted(createRoom('rare'))).toBe(false)
+  })
+})
+
+describe('voteForAnswer duplicate guard', () => {
+  it('ignores a second vote from the same player', () => {
+    let room = createRoom('rare')
+    const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
+    const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
+    const r3 = submitAnswer(r2, p2.id, 'Bob answer')
+    const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
+    const r4 = prepareVoting(r3, aiAnswer)
+    const firstAnswerId = r4.answers[0].id
+    const r5 = voteForAnswer(r4, p1.id, firstAnswerId)
+    const r6 = voteForAnswer(r5, p1.id, r5.answers[1].id)  // second vote — should be ignored
+    const totalVotesForP1 = r6.answers.reduce((sum, a) => sum + a.votes.filter(id => id === p1.id).length, 0)
+    expect(totalVotesForP1).toBe(1)
+  })
+})

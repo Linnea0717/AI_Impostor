@@ -67,7 +67,9 @@ export function reconnectPlayer(room: Room, token: string, socketId: string): Ro
 export function removePlayer(room: Room, playerId: string): Room {
   const players = room.players.filter(p => p.id !== playerId)
   const hostId =
-    room.hostId === playerId && players.length > 0 ? players[0].id : room.hostId
+    room.hostId === playerId
+      ? players.length > 0 ? players[0].id : ''
+      : room.hostId
   return { ...room, players, hostId }
 }
 
@@ -107,12 +109,12 @@ export function voteForAnswer(room: Room, playerId: string, answerId: string): R
 
 export function prepareVoting(room: Room, aiAnswer: Answer): Room {
   const all = [...room.answers, aiAnswer]
-  // Fisher-Yates shuffle
-  for (let i = all.length - 1; i > 0; i--) {
+  const shuffled = [...all]
+  for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[all[i], all[j]] = [all[j], all[i]]
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
-  return { ...room, state: 'VOTING', answers: all, aiGuesserVote: null }
+  return { ...room, state: 'VOTING', answers: shuffled, aiGuesserVote: null }
 }
 
 export function applyScoreDeltas(room: Room, deltas: ScoreDeltas): Room {
