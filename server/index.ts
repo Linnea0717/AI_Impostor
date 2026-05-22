@@ -43,12 +43,13 @@ function clearTimer(code: string) {
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), ms)
-    ),
-  ])
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms)
+    p.then(
+      val => { clearTimeout(timer); resolve(val) },
+      err => { clearTimeout(timer); reject(err) }
+    )
+  })
 }
 
 function cleanupRoom(code: string) {
@@ -186,6 +187,10 @@ app.post('/api/rooms', (req, res) => {
   // Ensure unique code (max 5 attempts)
   let attempts = 0
   while (rooms.has(room.code) && attempts < 5) { room = createRoom(questionPool); attempts++ }
+  if (rooms.has(room.code)) {
+    res.status(500).json({ error: 'Failed to generate unique room code' })
+    return
+  }
   rooms.set(room.code, room)
   wordPools.set(room.code, loadPool(questionPool))
   usedWords.set(room.code, new Set())
