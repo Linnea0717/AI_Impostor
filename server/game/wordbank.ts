@@ -10,15 +10,30 @@ export interface WordEntry {
   fallback: string
 }
 
-export function listPools(): string[] {
-  return readdirSync(POOLS_DIR)
-    .filter(f => f.endsWith('.json'))
-    .map(f => f.replace('.json', ''))
+export interface PoolMeta {
+  id: string
+  name: string
 }
 
-export function loadPool(poolName: string): WordEntry[] {
-  const filePath = join(POOLS_DIR, `${poolName}.json`)
-  return JSON.parse(readFileSync(filePath, 'utf-8')) as WordEntry[]
+interface PoolFile {
+  name: string
+  words: WordEntry[]
+}
+
+export function listPools(): PoolMeta[] {
+  return readdirSync(POOLS_DIR)
+    .filter(f => f.endsWith('.json'))
+    .map(f => {
+      const id = f.replace('.json', '')
+      const file = JSON.parse(readFileSync(join(POOLS_DIR, f), 'utf-8')) as PoolFile
+      return { id, name: file.name ?? id }
+    })
+}
+
+export function loadPool(poolId: string): WordEntry[] {
+  const filePath = join(POOLS_DIR, `${poolId}.json`)
+  const file = JSON.parse(readFileSync(filePath, 'utf-8')) as PoolFile
+  return file.words
 }
 
 export function pickWord(pool: WordEntry[], usedWords: Set<string>): WordEntry {

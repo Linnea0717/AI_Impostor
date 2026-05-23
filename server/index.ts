@@ -192,14 +192,16 @@ app.get('/api/pools', (_req, res) => {
 
 app.post('/api/rooms', (req, res) => {
   const { questionPool } = req.body as { questionPool?: string }
-  if (!questionPool || !listPools().includes(questionPool)) {
+  const pools = listPools()
+  const poolMeta = pools.find(p => p.id === questionPool)
+  if (!poolMeta) {
     res.status(400).json({ error: 'Invalid question pool' })
     return
   }
-  let room = createRoom(questionPool)
+  let room = createRoom(poolMeta.id, poolMeta.name)
   // Ensure unique code (max 5 attempts)
   let attempts = 0
-  while (rooms.has(room.code) && attempts < 5) { room = createRoom(questionPool); attempts++ }
+  while (rooms.has(room.code) && attempts < 5) { room = createRoom(poolMeta.id, poolMeta.name); attempts++ }
   if (rooms.has(room.code)) {
     res.status(500).json({ error: 'Failed to generate unique room code' })
     return

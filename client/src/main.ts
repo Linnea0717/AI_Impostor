@@ -36,12 +36,12 @@ function renderHome(): void {
   // Load available pools
   fetch('/api/pools')
     .then(r => r.json())
-    .then(({ pools }: { pools: string[] }) => {
+    .then(({ pools }: { pools: { id: string; name: string }[] }) => {
       const select = document.getElementById('pool-select') as HTMLSelectElement
       pools.forEach(p => {
         const opt = document.createElement('option')
-        opt.value = p
-        opt.textContent = p
+        opt.value = p.id
+        opt.textContent = p.name
         select.appendChild(opt)
       })
     })

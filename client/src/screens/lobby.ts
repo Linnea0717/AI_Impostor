@@ -13,7 +13,7 @@ export function render(room: PublicRoom, myId: string | null): void {
     <div class="card">
       <p style="font-size:0.85rem;color:#666">房號</p>
       <p style="font-size:2rem;font-weight:bold;letter-spacing:0.2em">${escapeHtml(room.code)}</p>
-      <p style="font-size:0.85rem;color:#666;margin-top:4px">題庫：${escapeHtml(room.questionPool)}</p>
+      <p style="font-size:0.85rem;color:#666;margin-top:4px">題庫：${escapeHtml(room.questionPoolName)}</p>
     </div>
     <div class="card">
       <h2>玩家（${room.players.length} 人）</h2>

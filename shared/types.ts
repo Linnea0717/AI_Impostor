@@ -26,6 +26,7 @@ export interface Room {
   code: string
   hostId: string
   questionPool: string
+  questionPoolName: string
   players: Player[]
   state: GameState
   round: number

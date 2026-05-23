@@ -9,7 +9,7 @@ import type { Answer } from '~shared/types'
 
 describe('createRoom', () => {
   it('creates a room in LOBBY state with correct defaults', () => {
-    const room = createRoom('rare')
+    const room = createRoom('rare', '罕見詞')
     expect(room.state).toBe('LOBBY')
     expect(room.questionPool).toBe('rare')
     expect(room.round).toBe(0)
@@ -21,7 +21,7 @@ describe('createRoom', () => {
 
 describe('addPlayer', () => {
   it('adds a player and makes them host if first', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
     expect(r.players).toHaveLength(1)
     expect(r.hostId).toBe(player.id)
@@ -29,14 +29,14 @@ describe('addPlayer', () => {
   })
 
   it('does not change host when second player joins', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 'socket-1')
     const { room: r2 } = addPlayer(r1, 'Bob', undefined, 'socket-2')
     expect(r2.hostId).toBe(p1.id)
   })
 
   it('reuses existing player id when token matches (reconnect path)', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Alice', player.id, 'socket-2')
     expect(r2.players).toHaveLength(1)
@@ -47,14 +47,14 @@ describe('addPlayer', () => {
 
 describe('removePlayer', () => {
   it('removes a player from the list', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
     const r2 = removePlayer(r1, player.id)
     expect(r2.players).toHaveLength(0)
   })
 
   it('promotes next player to host when host is removed', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 'socket-1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 'socket-2')
     const r3 = removePlayer(r2, p1.id)
@@ -64,14 +64,14 @@ describe('removePlayer', () => {
 
 describe('setPlayerConfirmed / allConfirmed', () => {
   it('marks a player as confirmed', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = setPlayerConfirmed(r1, player.id)
     expect(r2.players[0].hasConfirmed).toBe(true)
   })
 
   it('allConfirmed returns true only when all players are confirmed', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
     expect(allConfirmed(r2)).toBe(false)
@@ -84,7 +84,7 @@ describe('setPlayerConfirmed / allConfirmed', () => {
 
 describe('submitAnswer / allSubmitted', () => {
   it('records a player answer', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = submitAnswer(r1, player.id, 'My fake answer')
     expect(r2.answers).toHaveLength(1)
@@ -94,7 +94,7 @@ describe('submitAnswer / allSubmitted', () => {
   })
 
   it('ignores duplicate submissions from the same player', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = submitAnswer(r1, player.id, 'First')
     const r3 = submitAnswer(r2, player.id, 'Second')
@@ -105,7 +105,7 @@ describe('submitAnswer / allSubmitted', () => {
 
 describe('voteForAnswer / allVoted', () => {
   it('records a vote', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
     const r3 = submitAnswer(r2, p2.id, 'Bob answer')
@@ -119,7 +119,7 @@ describe('voteForAnswer / allVoted', () => {
 
 describe('toPublicRoom', () => {
   it('strips authorId from answers during VOTING', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = submitAnswer(r1, player.id, 'My answer')
     const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
@@ -131,7 +131,7 @@ describe('toPublicRoom', () => {
   })
 
   it('includes authorId in ROUND_RESULT', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = submitAnswer(r1, player.id, 'My answer')
     const aiAnswer: Answer = { id: 'ai-1', text: 'AI answer', authorId: 'AI', votes: [] }
@@ -143,7 +143,7 @@ describe('toPublicRoom', () => {
 
 describe('resetPerRound', () => {
   it('clears per-round fields but keeps scores', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = { ...r1, scores: { [player.id]: 10 } }
     const r3 = resetPerRound(r2)
@@ -158,7 +158,7 @@ describe('resetPerRound', () => {
 
 describe('reconnectPlayer', () => {
   it('updates socketId for the matching player', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 'socket-1')
     const r2 = reconnectPlayer(r1, player.id, 'socket-new')
     expect(r2.players[0].socketId).toBe('socket-new')
@@ -167,14 +167,14 @@ describe('reconnectPlayer', () => {
 
 describe('applyScoreDeltas', () => {
   it('adds deltas to existing scores', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = applyScoreDeltas(r1, { [player.id]: 3 })
     expect(r2.scores[player.id]).toBe(3)
   })
 
   it('accumulates on top of existing score', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player } = addPlayer(room, 'Alice', undefined, 's1')
     const r2 = applyScoreDeltas(r1, { [player.id]: 3 })
     const r3 = applyScoreDeltas(r2, { [player.id]: 2 })
@@ -184,12 +184,12 @@ describe('applyScoreDeltas', () => {
 
 describe('allVoted', () => {
   it('returns false when no players', () => {
-    const room = createRoom('rare')
+    const room = createRoom('rare', '罕見詞')
     expect(allVoted(room)).toBe(false)
   })
 
   it('returns true when all players have voted', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
     const r3 = submitAnswer(r2, p2.id, 'Bob answer')
@@ -206,17 +206,17 @@ describe('allVoted', () => {
 
 describe('allConfirmed / allSubmitted empty-room guard', () => {
   it('allConfirmed returns false for empty room', () => {
-    expect(allConfirmed(createRoom('rare'))).toBe(false)
+    expect(allConfirmed(createRoom('rare', '罕見詞'))).toBe(false)
   })
 
   it('allSubmitted returns false for empty room', () => {
-    expect(allSubmitted(createRoom('rare'))).toBe(false)
+    expect(allSubmitted(createRoom('rare', '罕見詞'))).toBe(false)
   })
 })
 
 describe('voteForAnswer self-vote guard', () => {
   it('ignores a vote for the player\'s own answer', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
     const r3 = submitAnswer(r2, p1.id, 'Alice answer')
@@ -232,7 +232,7 @@ describe('voteForAnswer self-vote guard', () => {
 
 describe('voteForAnswer duplicate guard', () => {
   it('ignores a second vote from the same player', () => {
-    let room = createRoom('rare')
+    let room = createRoom('rare', '罕見詞')
     const { room: r1, player: p1 } = addPlayer(room, 'Alice', undefined, 's1')
     const { room: r2, player: p2 } = addPlayer(r1, 'Bob', undefined, 's2')
     const r3 = submitAnswer(r2, p2.id, 'Bob answer')

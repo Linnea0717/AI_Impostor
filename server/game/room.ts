@@ -10,11 +10,12 @@ function generateCode(): string {
   ).join('')
 }
 
-export function createRoom(questionPool: string): Room {
+export function createRoom(questionPool: string, questionPoolName: string): Room {
   return {
     code: generateCode(),
     hostId: '',
     questionPool,
+    questionPoolName,
     players: [],
     state: 'LOBBY',
     round: 0,
