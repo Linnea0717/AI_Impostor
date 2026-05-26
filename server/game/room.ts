@@ -160,6 +160,7 @@ export function allVoted(room: Room): boolean {
 
 export function toPublicRoom(room: Room): PublicRoom {
   const hideAuthors = room.state === 'VOTING'
+  const revealCorrect = room.state === 'ROUND_RESULT'
   return {
     ...room,
     answers: room.answers.map(({ authorId, ...rest }) => ({
@@ -167,5 +168,6 @@ export function toPublicRoom(room: Room): PublicRoom {
       ...(hideAuthors ? {} : { authorId }),
     })),
     aiGuesserVote: hideAuthors ? null : room.aiGuesserVote,
+    currentWordCorrect: revealCorrect ? room.currentWordCorrect : '',
   }
 }

@@ -153,6 +153,20 @@ describe('toPublicRoom', () => {
     const pub = toPublicRoom(r3)
     pub.answers.forEach(a => expect(a.authorId).toBeDefined())
   })
+
+  it('hides currentWordCorrect outside ROUND_RESULT', () => {
+    const base = createRoom('rare', '罕見詞', makeTestSettings())
+    const r = { ...base, state: 'ANSWER_INPUT' as const, currentWordCorrect: '真實解答' }
+    const pub = toPublicRoom(r)
+    expect(pub.currentWordCorrect).toBe('')
+  })
+
+  it('reveals currentWordCorrect during ROUND_RESULT', () => {
+    const base = createRoom('rare', '罕見詞', makeTestSettings())
+    const r = { ...base, state: 'ROUND_RESULT' as const, currentWordCorrect: '真實解答' }
+    const pub = toPublicRoom(r)
+    expect(pub.currentWordCorrect).toBe('真實解答')
+  })
 })
 
 describe('resetPerRound', () => {
