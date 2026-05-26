@@ -1,6 +1,7 @@
 import { confirmReady } from '../socket'
 import type { PublicRoom } from '~shared/types'
 import { escapeHtml } from '../utils'
+import { formatProgress } from '../utils/progress'
 
 export function render(room: PublicRoom, myId: string | null): void {
   const app = document.getElementById('app')!
@@ -46,6 +47,12 @@ export function render(room: PublicRoom, myId: string | null): void {
 
   app.innerHTML = `
     <h1>回合結果</h1>
+    <p style="text-align:center;color:#666;font-size:0.85rem">${escapeHtml(formatProgress(room))}</p>
+    <div class="card" style="border:2px solid #16a34a">
+      <p style="font-size:0.85rem;color:#16a34a;font-weight:bold">📖 正確解答</p>
+      <h3 style="margin-top:8px">${escapeHtml(room.currentWord)}</h3>
+      <p style="margin-top:8px;line-height:1.6">${escapeHtml(room.currentWordCorrect)}</p>
+    </div>
     ${aiGuessNote}
     ${answersHtml}
     <div class="card">
