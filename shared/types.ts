@@ -7,10 +7,10 @@ export type GameState =
   | 'GAME_OVER'
 
 export interface Player {
-  id: string         // stable UUID, stored in client localStorage
-  socketId: string   // current socket ID, changes on reconnect
+  id: string
+  socketId: string
   nickname: string
-  hasConfirmed: boolean  // ready in LOBBY / continue in ROUND_RESULT
+  hasConfirmed: boolean
   hasSubmitted: boolean
   hasVoted: boolean
 }
@@ -18,8 +18,18 @@ export interface Player {
 export interface Answer {
   id: string
   text: string
-  authorId: string   // player UUID or 'AI'
-  votes: string[]    // voter player UUIDs
+  authorId: string
+  votes: string[]
+}
+
+export type EndCondition =
+  | { type: 'rounds'; value: number }
+  | { type: 'score';  value: number }
+
+export interface GameSettings {
+  answerInputMs: number
+  votingMs: number
+  endCondition: EndCondition
 }
 
 export interface Room {
@@ -30,16 +40,16 @@ export interface Room {
   players: Player[]
   state: GameState
   round: number
-  maxRounds: number
+  settings: GameSettings
   currentWord: string
+  currentWordCorrect: string
   answers: Answer[]
-  aiGuesserVote: string | null  // answerId or 'TIMEOUT'; null during VOTING
-  aiGuesserVoted: boolean       // true when AI guesser has cast its vote (hidden from clients during VOTING)
-  aiSubmitted: boolean          // true when AI definition is ready during ANSWER_INPUT
+  aiGuesserVote: string | null
+  aiGuesserVoted: boolean
+  aiSubmitted: boolean
   scores: Record<string, number>
-  timerEndsAt: number  // unix ms; clients calculate countdown locally
+  timerEndsAt: number
 }
 
-// Sent to clients — authorId hidden during VOTING
 export type PublicAnswer = Omit<Answer, 'authorId'> & { authorId?: string }
 export type PublicRoom = Omit<Room, 'answers'> & { answers: PublicAnswer[] }
