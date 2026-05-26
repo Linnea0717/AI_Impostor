@@ -35,14 +35,19 @@ function renderHome(): void {
           <label>投票時間（秒，20–90）
             <input id="set-voting-sec" type="number" min="20" max="90" step="5" value="45" />
           </label>
-          <fieldset style="border:1px solid #eee;border-radius:8px;padding:8px">
-            <legend>結束條件</legend>
-            <label><input type="radio" name="end-type" value="rounds" checked /> 固定回合數（3–10）</label>
-            <input id="set-rounds" type="number" min="3" max="10" step="1" value="5" />
-            <br/>
-            <label><input type="radio" name="end-type" value="score" /> 達到目標分數（5–30）</label>
-            <input id="set-score" type="number" min="5" max="30" step="1" value="15" disabled />
-          </fieldset>
+          <div>
+            <p style="margin:0 0 6px;font-size:0.9rem">結束條件</p>
+            <div id="end-type-toggle" data-end-type="rounds" style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #6c3aed;border-radius:8px;overflow:hidden">
+              <button type="button" data-value="rounds" class="seg-btn" style="padding:12px;border:none;background:#6c3aed;color:#fff;font-size:1rem;cursor:pointer">固定回合數</button>
+              <button type="button" data-value="score" class="seg-btn" style="padding:12px;border:none;background:#fff;color:#6c3aed;font-size:1rem;cursor:pointer">目標分數</button>
+            </div>
+            <label id="rounds-row" style="display:block;margin-top:8px">回合數（3–10）
+              <input id="set-rounds" type="number" min="3" max="10" step="1" value="5" />
+            </label>
+            <label id="score-row" style="display:none;margin-top:8px">目標分數（5–30）
+              <input id="set-score" type="number" min="5" max="30" step="1" value="15" />
+            </label>
+          </div>
         </div>
       </details>
       <button id="create-btn">建立房間</button>
@@ -68,11 +73,18 @@ function renderHome(): void {
     })
     .catch(() => showError('無法載入題庫列表'))
 
-  document.querySelectorAll<HTMLInputElement>('input[name="end-type"]').forEach(radio => {
-    radio.addEventListener('change', () => {
-      const isRounds = (document.querySelector('input[name="end-type"]:checked') as HTMLInputElement).value === 'rounds'
-      ;(document.getElementById('set-rounds') as HTMLInputElement).disabled = !isRounds
-      ;(document.getElementById('set-score') as HTMLInputElement).disabled = isRounds
+  document.querySelectorAll<HTMLButtonElement>('#end-type-toggle .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.value === 'score' ? 'score' : 'rounds'
+      const toggle = document.getElementById('end-type-toggle')!
+      toggle.dataset.endType = value
+      toggle.querySelectorAll<HTMLButtonElement>('.seg-btn').forEach(b => {
+        const active = b.dataset.value === value
+        b.style.background = active ? '#6c3aed' : '#fff'
+        b.style.color = active ? '#fff' : '#6c3aed'
+      })
+      ;(document.getElementById('rounds-row') as HTMLElement).style.display = value === 'rounds' ? 'block' : 'none'
+      ;(document.getElementById('score-row') as HTMLElement).style.display = value === 'score' ? 'block' : 'none'
     })
   })
 
@@ -83,7 +95,7 @@ function renderHome(): void {
 
     const answerInputSec = Number((document.getElementById('set-answer-sec') as HTMLInputElement).value)
     const votingSec = Number((document.getElementById('set-voting-sec') as HTMLInputElement).value)
-    const endType = (document.querySelector('input[name="end-type"]:checked') as HTMLInputElement).value
+    const endType = document.getElementById('end-type-toggle')!.dataset.endType === 'score' ? 'score' : 'rounds'
     const endValue = endType === 'rounds'
       ? Number((document.getElementById('set-rounds') as HTMLInputElement).value)
       : Number((document.getElementById('set-score') as HTMLInputElement).value)
