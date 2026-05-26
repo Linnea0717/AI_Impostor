@@ -172,10 +172,12 @@ if (reached) advanceToGameOver(code)
 else advanceToWordGeneration(code)
 ```
 
-**Lobby/Result 顯示**：
+**回合進度顯示**（`lobby.ts`、`answer.ts`、`results.ts`）：
 
 - 若 `type === 'rounds'`：「第 N / M 回合」
 - 若 `type === 'score'`：「第 N 回合｜目標 X 分」
+
+`answer.ts` 第 39 行原本用 `room.maxRounds`，改成從 `room.settings.endCondition` 推導。建一個 `client/src/utils/progress.ts` `formatProgress(room)` 共用 helper，避免三個畫面各自處理。
 
 ---
 
@@ -253,7 +255,9 @@ const ROUND_RESULT_MS = 120_000
 - `server/__tests__/settings-parsing.test.ts`（新檔）
 - `client/src/main.ts`
 - `client/src/screens/lobby.ts`
+- `client/src/screens/answer.ts`
 - `client/src/screens/results.ts`
+- `client/src/utils/progress.ts`（新檔）
 - `client/package.json`
 
 ---
