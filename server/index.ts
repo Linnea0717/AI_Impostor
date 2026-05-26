@@ -19,6 +19,7 @@ import {
 import { calculateRoundScores } from './game/scoring'
 import { listPools, loadPool, pickWord, type WordEntry } from './game/wordbank'
 import { generateDefinition, guessDefinition } from './llm/provider'
+import { parseSettings } from './settings'
 import type { Room, Answer } from '~shared/types'
 
 const app = express()
@@ -199,23 +200,44 @@ app.get('/api/pools', (_req, res) => {
 })
 
 app.post('/api/rooms', (req, res) => {
-  const { questionPool } = req.body as { questionPool?: string }
+  const body = req.body as {
+    questionPool?: string
+    answerInputSec?: number
+    votingSec?: number
+    endCondition?: { type: string; value: number }
+  }
+
   const pools = listPools()
-  const poolMeta = pools.find(p => p.id === questionPool)
+  const poolMeta = pools.find(p => p.id === body.questionPool)
   if (!poolMeta) {
-    res.status(400).json({ error: 'Invalid question pool' })
+    res.status(400).json({ error: 'invalid_question_pool' })
     return
   }
-  let room = createRoom(poolMeta.id, poolMeta.name)
-  // Ensure unique code (max 5 attempts)
+
+  const parsed = parseSettings(body)
+  if (!parsed.ok) {
+    res.status(400).json({
+      error: 'settings_out_of_range',
+      field: parsed.field,
+      min: parsed.min,
+      max: parsed.max,
+    })
+    return
+  }
+
+  let room = createRoom(poolMeta.id, poolMeta.name, parsed.value)
   let attempts = 0
-  while (rooms.has(room.code) && attempts < 5) { room = createRoom(poolMeta.id, poolMeta.name); attempts++ }
+  while (rooms.has(room.code) && attempts < 50) {
+    room = createRoom(poolMeta.id, poolMeta.name, parsed.value)
+    attempts++
+  }
   if (rooms.has(room.code)) {
     res.status(500).json({ error: 'Failed to generate unique room code' })
     return
   }
+
   rooms.set(room.code, room)
-  wordPools.set(room.code, loadPool(questionPool))
+  wordPools.set(room.code, loadPool(poolMeta.id))
   usedWords.set(room.code, new Set())
   res.json({ code: room.code })
 })
