@@ -1,16 +1,16 @@
 import { randomUUID } from 'crypto'
-import type { Room, Player, Answer, PublicRoom } from '~shared/types'
+import type { Room, Player, Answer, GameSettings, PublicRoom } from '~shared/types'
 import type { ScoreDeltas } from './scoring'
 
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-
 function generateCode(): string {
-  return Array.from({ length: 5 }, () =>
-    CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]
-  ).join('')
+  return String(Math.floor(Math.random() * 10000)).padStart(4, '0')
 }
 
-export function createRoom(questionPool: string, questionPoolName: string): Room {
+export function createRoom(
+  questionPool: string,
+  questionPoolName: string,
+  settings: GameSettings,
+): Room {
   return {
     code: generateCode(),
     hostId: '',
@@ -19,8 +19,9 @@ export function createRoom(questionPool: string, questionPoolName: string): Room
     players: [],
     state: 'LOBBY',
     round: 0,
-    maxRounds: 5,
+    settings,
     currentWord: '',
+    currentWordCorrect: '',
     answers: [],
     aiGuesserVote: null,
     aiGuesserVoted: false,
