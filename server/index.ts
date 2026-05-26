@@ -275,14 +275,17 @@ io.on('connection', socket => {
       socket.emit('room:error', { message: '目前無法確認' }); return
     }
     room = setPlayerConfirmed(room, playerId)
-    rooms.set(code, room)
-    broadcast(room)
 
-    // LOBBY has no pre-existing timer — start the 60s inactivity timer on first confirm
-    // ROUND_RESULT timer is already set inside advanceToRoundResult(), so we don't add another
+    // First confirm in LOBBY starts the inactivity timer and sets timerEndsAt so
+    // clients can render a countdown. ROUND_RESULT timer is already set inside
+    // advanceToRoundResult(), so we don't add another.
     if (room.state === 'LOBBY' && !timers.has(code)) {
+      room = { ...room, timerEndsAt: Date.now() + LOBBY_CONFIRM_MS }
       setTimer(code, LOBBY_CONFIRM_MS, () => advanceToWordGeneration(code))
     }
+
+    rooms.set(code, room)
+    broadcast(room)
 
     checkAndAdvance(code)  // if allConfirmed, clears timer and advances immediately
   })

@@ -2,6 +2,7 @@ import { confirmReady } from '../socket'
 import type { PublicRoom } from '~shared/types'
 import { escapeHtml } from '../utils'
 import { formatProgress } from '../utils/progress'
+import { startCountdown } from '../timer'
 
 export function render(room: PublicRoom, myId: string | null): void {
   const app = document.getElementById('app')!
@@ -59,11 +60,14 @@ export function render(room: PublicRoom, myId: string | null): void {
       <h2>計分板</h2>
       <ul style="list-style:none">${scoreboardHtml}</ul>
     </div>
+    <div class="timer" id="countdown">--</div>
     <p style="text-align:center;color:#666;margin:8px 0">${confirmedCount}/${room.players.length} 人準備繼續</p>
     <button id="continue-btn" ${alreadyConfirmed ? 'disabled' : ''}>
       ${alreadyConfirmed ? '等待其他玩家…' : '繼續 →'}
     </button>
   `
+
+  startCountdown(room.timerEndsAt)
 
   if (!alreadyConfirmed) {
     document.getElementById('continue-btn')!.addEventListener('click', confirmReady)

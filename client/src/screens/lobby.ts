@@ -2,6 +2,7 @@ import { confirmReady } from '../socket'
 import type { PublicRoom } from '~shared/types'
 import { escapeHtml } from '../utils'
 import { formatProgress } from '../utils/progress'
+import { startCountdown } from '../timer'
 import QRCode from 'qrcode'
 
 let lastQrCode = ''
@@ -41,11 +42,14 @@ export function render(room: PublicRoom, myId: string | null): void {
           </li>`).join('')}
       </ul>
     </div>
+    ${room.timerEndsAt > Date.now() ? '<div class="timer" id="countdown">--</div>' : ''}
     <p style="text-align:center;color:#666;margin:8px 0">${confirmedCount}/${room.players.length} 人準備好了</p>
     <button id="confirm-btn" ${alreadyConfirmed ? 'disabled' : ''}>
       ${alreadyConfirmed ? '已準備好了 ✅' : '準備好了！'}
     </button>
   `
+
+  if (room.timerEndsAt > Date.now()) startCountdown(room.timerEndsAt)
 
   const qrImg = document.getElementById('qr-img') as HTMLImageElement | null
   if (lastQrCode === room.code && lastQrDataUrl) {
