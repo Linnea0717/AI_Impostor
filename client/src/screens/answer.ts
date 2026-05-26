@@ -1,6 +1,7 @@
 import { submitAnswer } from '../socket'
 import type { PublicRoom } from '~shared/types'
 import { escapeHtml } from '../utils'
+import { formatProgress } from '../utils/progress'
 import { startCountdown } from '../timer'
 
 export function render(room: PublicRoom, myId: string | null): void {
@@ -36,7 +37,7 @@ export function render(room: PublicRoom, myId: string | null): void {
 
   app.innerHTML = `
     <div class="card">
-      <p style="font-size:0.85rem;color:#666">第 ${room.round}/${room.maxRounds} 回合</p>
+      <p style="font-size:0.85rem;color:#666">${escapeHtml(formatProgress(room))}</p>
       <div class="timer" id="countdown">--</div>
       <h2 style="text-align:center;font-size:1.4rem">${escapeHtml(room.currentWord)}</h2>
     </div>
