@@ -28,12 +28,10 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, { cors: { origin: '*' } })
 
 // ── Phase durations (ms) ─────────────────────────────────────────────
-const LOBBY_CONFIRM_MS = 60_000           // inactivity timeout after first player confirms in LOBBY
-const ANSWER_INPUT_MS = 90_000            // time players have to write their fake definition
-const VOTING_MS = 45_000                  // time players have to vote
-const ROUND_RESULT_MS = 15_000            // result display between rounds
-const AI_DEFINITION_TIMEOUT_MS = 58_000   // must be < ANSWER_INPUT_MS so fallback fires within phase
-const AI_GUESSER_TIMEOUT_MS = 43_000      // must be < VOTING_MS so result is in before voting ends
+const LOBBY_CONFIRM_MS = 120_000          // lobby idle timeout after first confirm
+const ROUND_RESULT_MS = 120_000           // result/correct-answer display between rounds
+// Answer-input + voting durations are per-room (room.settings).
+// AI sub-timeouts derive from those (settings.*Ms - 2_000), see below.
 
 // ── In-memory state ────────────────────────────────────────────────
 const rooms = new Map<string, Room>()
@@ -79,7 +77,6 @@ function cleanupRoom(code: string) {
 // ── State transitions ────────────────────────────────────────────────
 function advanceToWordGeneration(code: string) {
   let room = rooms.get(code)
-  // Guard: only advance from LOBBY or ROUND_RESULT — prevents double-execution on race between timer + checkAndAdvance
   if (!room || !['LOBBY', 'ROUND_RESULT'].includes(room.state)) return
 
   room = resetPerRound(room)
@@ -92,15 +89,20 @@ function advanceToWordGeneration(code: string) {
   const entry = pickWord(pool, used)
   used.add(entry.word)
 
-  // Transition to ANSWER_INPUT immediately; LLM generates in parallel
-  room = { ...room, state: 'ANSWER_INPUT', currentWord: entry.word, timerEndsAt: Date.now() + ANSWER_INPUT_MS, aiSubmitted: false }
+  room = {
+    ...room,
+    state: 'ANSWER_INPUT',
+    currentWord: entry.word,
+    currentWordCorrect: entry.fallback,
+    timerEndsAt: Date.now() + room.settings.answerInputMs,
+    aiSubmitted: false,
+  }
   rooms.set(code, room)
   broadcast(room)
 
-  setTimer(code, ANSWER_INPUT_MS, () => advanceToVoting(code))
+  setTimer(code, room.settings.answerInputMs, () => advanceToVoting(code))
 
-  // AI generates in background — mark aiSubmitted when ready (or on fallback)
-  withTimeout(generateDefinition(entry.word), AI_DEFINITION_TIMEOUT_MS)
+  withTimeout(generateDefinition(entry.word), room.settings.answerInputMs - 2_000)
     .then(definition => { pendingAiDefinitions.set(code, definition) })
     .catch(err => {
       console.error('[AI imposter] failed, using fallback:', err instanceof Error ? err.message : err)
@@ -125,14 +127,13 @@ async function advanceToVoting(code: string) {
   const aiAnswer: Answer = { id: randomUUID(), text: aiText, authorId: 'AI', votes: [] }
 
   room = prepareVoting(room, aiAnswer)
-  room = { ...room, timerEndsAt: Date.now() + VOTING_MS }
+  room = { ...room, timerEndsAt: Date.now() + room.settings.votingMs }
   rooms.set(code, room)
   broadcast(room)
 
-  // AI guesser runs in parallel — result stored when ready, revealed in ROUND_RESULT
   const answersForGuesser = room.answers.map(a => ({ id: a.id, text: a.text }))
   let aiGuesserVoteResult: string = 'TIMEOUT'
-  withTimeout(guessDefinition(answersForGuesser), AI_GUESSER_TIMEOUT_MS)
+  withTimeout(guessDefinition(answersForGuesser), room.settings.votingMs - 2_000)
     .then(answerId => { aiGuesserVoteResult = answerId })
     .catch(err => console.error('[AI guesser] failed:', err instanceof Error ? err.message : err))
     .finally(() => {
@@ -140,11 +141,10 @@ async function advanceToVoting(code: string) {
       if (!r || (r.state !== 'VOTING' && r.state !== 'ROUND_RESULT')) return
       rooms.set(code, { ...r, aiGuesserVote: aiGuesserVoteResult, aiGuesserVoted: true })
       broadcast(rooms.get(code)!)
-      // Only trigger early-stop if still voting; in ROUND_RESULT the score is already calculated
       if (r.state === 'VOTING') checkAndAdvance(code)
     })
 
-  setTimer(code, VOTING_MS, () => advanceToRoundResult(code))
+  setTimer(code, room.settings.votingMs, () => advanceToRoundResult(code))
 }
 
 function advanceToRoundResult(code: string) {
