@@ -27,7 +27,7 @@ function renderHome(): void {
       <select id="pool-select" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:1rem;margin-top:8px"></select>
       <input id="host-nickname" placeholder="你的暱稱" maxlength="16" />
       <details style="margin-top:12px">
-        <summary style="cursor:pointer;color:#6c3aed">▸ 進階設定</summary>
+        <summary style="cursor:pointer;color:#6c3aed">進階設定</summary>
         <div style="margin-top:12px;display:grid;gap:12px">
           <label>作答時間（秒，30–180）
             <input id="set-answer-sec" type="number" min="30" max="180" step="5" value="90" />
@@ -38,8 +38,8 @@ function renderHome(): void {
           <div>
             <p style="margin:0 0 6px;font-size:0.9rem">結束條件</p>
             <div id="end-type-toggle" data-end-type="rounds" style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #6c3aed;border-radius:8px;overflow:hidden">
-              <button type="button" data-value="rounds" class="seg-btn" style="padding:12px;border:none;background:#6c3aed;color:#fff;font-size:1rem;cursor:pointer">固定回合數</button>
-              <button type="button" data-value="score" class="seg-btn" style="padding:12px;border:none;background:#fff;color:#6c3aed;font-size:1rem;cursor:pointer">目標分數</button>
+              <button type="button" data-value="rounds" class="seg-btn" style="margin:0;padding:12px;border:none;border-radius:0;background:#6c3aed;color:#fff;font-size:1rem;cursor:pointer">固定回合數</button>
+              <button type="button" data-value="score" class="seg-btn" style="margin:0;padding:12px;border:none;border-radius:0;background:#fff;color:#6c3aed;font-size:1rem;cursor:pointer">目標分數</button>
             </div>
             <label id="rounds-row" style="display:block;margin-top:8px">回合數（3–10）
               <input id="set-rounds" type="number" min="3" max="10" step="1" value="5" />
