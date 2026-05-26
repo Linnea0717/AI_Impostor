@@ -19,7 +19,7 @@ export function parseSettings(body: RawBody): ParseResult {
   const a = SETTINGS_BOUNDS.answerInputSec
   const v = SETTINGS_BOUNDS.votingSec
 
-  let answerInputSec = a.default
+  let answerInputSec: number = a.default
   if (body.answerInputSec !== undefined) {
     if (!inRange(body.answerInputSec, a.min, a.max)) {
       return { ok: false, field: 'answerInputSec', min: a.min, max: a.max }
@@ -27,7 +27,7 @@ export function parseSettings(body: RawBody): ParseResult {
     answerInputSec = body.answerInputSec
   }
 
-  let votingSec = v.default
+  let votingSec: number = v.default
   if (body.votingSec !== undefined) {
     if (!inRange(body.votingSec, v.min, v.max)) {
       return { ok: false, field: 'votingSec', min: v.min, max: v.max }
