@@ -21,6 +21,7 @@ import { listPools, loadPool, pickWord, type WordEntry } from './game/wordbank'
 import { generateDefinition, guessDefinition } from './llm/provider'
 import { parseSettings } from './settings'
 import type { Room, Answer } from '~shared/types'
+import { SCORE_MODE_SAFETY_CAP } from '~shared/config'
 
 const app = express()
 app.use(express.json())
@@ -164,11 +165,18 @@ function advanceToRoundResult(code: string) {
 function advanceFromRoundResult(code: string) {
   const room = rooms.get(code)
   if (!room || room.state !== 'ROUND_RESULT') return
-  if (room.round >= room.maxRounds) {
-    advanceToGameOver(code)
+
+  const { endCondition } = room.settings
+  let reached = false
+  if (endCondition.type === 'rounds') {
+    reached = room.round >= endCondition.value
   } else {
-    advanceToWordGeneration(code)
+    const maxScore = Math.max(0, ...Object.values(room.scores))
+    reached = maxScore >= endCondition.value || room.round >= SCORE_MODE_SAFETY_CAP
   }
+
+  if (reached) advanceToGameOver(code)
+  else advanceToWordGeneration(code)
 }
 
 function advanceToGameOver(code: string) {
