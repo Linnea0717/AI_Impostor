@@ -26,6 +26,14 @@ app.use(express.json())
 const httpServer = createServer(app)
 const io = new Server(httpServer, { cors: { origin: '*' } })
 
+// ── Phase durations (ms) ─────────────────────────────────────────────
+const LOBBY_CONFIRM_MS = 60_000           // inactivity timeout after first player confirms in LOBBY
+const ANSWER_INPUT_MS = 90_000            // time players have to write their fake definition
+const VOTING_MS = 45_000                  // time players have to vote
+const ROUND_RESULT_MS = 15_000            // result display between rounds
+const AI_DEFINITION_TIMEOUT_MS = 58_000   // must be < ANSWER_INPUT_MS so fallback fires within phase
+const AI_GUESSER_TIMEOUT_MS = 43_000      // must be < VOTING_MS so result is in before voting ends
+
 // ── In-memory state ────────────────────────────────────────────────
 const rooms = new Map<string, Room>()
 const wordPools = new Map<string, WordEntry[]>()
@@ -84,14 +92,14 @@ function advanceToWordGeneration(code: string) {
   used.add(entry.word)
 
   // Transition to ANSWER_INPUT immediately; LLM generates in parallel
-  room = { ...room, state: 'ANSWER_INPUT', currentWord: entry.word, timerEndsAt: Date.now() + 60_000, aiSubmitted: false }
+  room = { ...room, state: 'ANSWER_INPUT', currentWord: entry.word, timerEndsAt: Date.now() + ANSWER_INPUT_MS, aiSubmitted: false }
   rooms.set(code, room)
   broadcast(room)
 
-  setTimer(code, 60_000, () => advanceToVoting(code))
+  setTimer(code, ANSWER_INPUT_MS, () => advanceToVoting(code))
 
   // AI generates in background — mark aiSubmitted when ready (or on fallback)
-  withTimeout(generateDefinition(entry.word), 58_000)
+  withTimeout(generateDefinition(entry.word), AI_DEFINITION_TIMEOUT_MS)
     .then(definition => { pendingAiDefinitions.set(code, definition) })
     .catch(err => {
       console.error('[AI imposter] failed, using fallback:', err instanceof Error ? err.message : err)
@@ -116,14 +124,14 @@ async function advanceToVoting(code: string) {
   const aiAnswer: Answer = { id: randomUUID(), text: aiText, authorId: 'AI', votes: [] }
 
   room = prepareVoting(room, aiAnswer)
-  room = { ...room, timerEndsAt: Date.now() + 45_000 }
+  room = { ...room, timerEndsAt: Date.now() + VOTING_MS }
   rooms.set(code, room)
   broadcast(room)
 
   // AI guesser runs in parallel — result stored when ready, revealed in ROUND_RESULT
   const answersForGuesser = room.answers.map(a => ({ id: a.id, text: a.text }))
   let aiGuesserVoteResult: string = 'TIMEOUT'
-  withTimeout(guessDefinition(answersForGuesser), 43_000)
+  withTimeout(guessDefinition(answersForGuesser), AI_GUESSER_TIMEOUT_MS)
     .then(answerId => { aiGuesserVoteResult = answerId })
     .catch(err => console.error('[AI guesser] failed:', err instanceof Error ? err.message : err))
     .finally(() => {
@@ -135,7 +143,7 @@ async function advanceToVoting(code: string) {
       if (r.state === 'VOTING') checkAndAdvance(code)
     })
 
-  setTimer(code, 45_000, () => advanceToRoundResult(code))
+  setTimer(code, VOTING_MS, () => advanceToRoundResult(code))
 }
 
 function advanceToRoundResult(code: string) {
@@ -145,11 +153,11 @@ function advanceToRoundResult(code: string) {
 
   const deltas = calculateRoundScores(room.answers, room.players)
   room = applyScoreDeltas(room, deltas)
-  room = { ...room, state: 'ROUND_RESULT', timerEndsAt: Date.now() + 15_000 }
+  room = { ...room, state: 'ROUND_RESULT', timerEndsAt: Date.now() + ROUND_RESULT_MS }
   rooms.set(code, room)
   broadcast(room)
 
-  setTimer(code, 15_000, () => advanceFromRoundResult(code))
+  setTimer(code, ROUND_RESULT_MS, () => advanceFromRoundResult(code))
 }
 
 function advanceFromRoundResult(code: string) {
@@ -243,7 +251,7 @@ io.on('connection', socket => {
     // LOBBY has no pre-existing timer — start the 60s inactivity timer on first confirm
     // ROUND_RESULT timer is already set inside advanceToRoundResult(), so we don't add another
     if (room.state === 'LOBBY' && !timers.has(code)) {
-      setTimer(code, 60_000, () => advanceToWordGeneration(code))
+      setTimer(code, LOBBY_CONFIRM_MS, () => advanceToWordGeneration(code))
     }
 
     checkAndAdvance(code)  // if allConfirmed, clears timer and advances immediately
