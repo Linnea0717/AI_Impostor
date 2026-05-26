@@ -5,6 +5,7 @@ import { render as renderVoting } from './screens/voting'
 import { render as renderResults } from './screens/results'
 import { render as renderGameover } from './screens/gameover'
 import type { PublicRoom } from '~shared/types'
+import { escapeHtml } from './utils'
 
 const app = document.getElementById('app')!
 
@@ -48,7 +49,7 @@ function renderHome(): void {
     </div>
     <div class="card">
       <h2>加入房間</h2>
-      <input id="room-code" placeholder="輸入房號" maxlength="4" inputmode="numeric" pattern="[0-9]*" value="${prefillRoom}" />
+      <input id="room-code" placeholder="輸入房號" maxlength="4" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(prefillRoom)}" />
       <input id="join-nickname" placeholder="你的暱稱" maxlength="16" />
       <button id="join-btn">加入</button>
     </div>
