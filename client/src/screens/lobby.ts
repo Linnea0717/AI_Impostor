@@ -5,6 +5,7 @@ import { formatProgress } from '../utils/progress'
 import QRCode from 'qrcode'
 
 let lastQrCode = ''
+let lastQrDataUrl = ''
 
 export function render(room: PublicRoom, myId: string | null): void {
   const app = document.getElementById('app')!
@@ -46,15 +47,19 @@ export function render(room: PublicRoom, myId: string | null): void {
     </button>
   `
 
-  if (lastQrCode !== room.code) {
+  const qrImg = document.getElementById('qr-img') as HTMLImageElement | null
+  if (lastQrCode === room.code && lastQrDataUrl) {
+    if (qrImg) qrImg.src = lastQrDataUrl
+  } else {
     lastQrCode = room.code
+    QRCode.toDataURL(shareUrl, { width: 160, margin: 1 })
+      .then(dataUrl => {
+        lastQrDataUrl = dataUrl
+        const img = document.getElementById('qr-img') as HTMLImageElement | null
+        if (img) img.src = dataUrl
+      })
+      .catch(() => { /* swallow */ })
   }
-  QRCode.toDataURL(shareUrl, { width: 160, margin: 1 })
-    .then(dataUrl => {
-      const img = document.getElementById('qr-img') as HTMLImageElement | null
-      if (img) img.src = dataUrl
-    })
-    .catch(() => { /* swallow */ })
 
   document.getElementById('copy-btn')!.addEventListener('click', async () => {
     try {
